@@ -1,0 +1,42 @@
+# Servicios locales de VideoVault: el almacenamiento S3 (RustFS) y, si no
+# tenés uno, MongoDB.
+#
+#   docker compose up -d rustfs            # solo RustFS (ya tenés MongoDB)
+#   docker compose up -d                   # RustFS y MongoDB
+#
+# Las credenciales salen de .env.local (las mismas que usa la app), así que
+# hay que arrancarlo con:  docker compose --env-file .env.local up -d
+
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    # Puertos del ordenador configurables: si ya hay otro RustFS o MinIO en el
+    # 9000, se ponen otros en .env.local (y RUSTFS_ENDPOINT con el mismo).
+    ports:
+      - "${RUSTFS_API_PORT:-9000}:9000" # API S3: la que usa la app (RUSTFS_ENDPOINT)
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001" # consola web, para mirar los ficheros
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?Falta RUSTFS_ACCESS_KEY en .env.local}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?Falta RUSTFS_SECRET_KEY en .env.local}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      # Sin esto, el navegador no puede subir directamente: RustFS no
+      # devolvería las cabeceras CORS y el navegador bloquearía el PUT.
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${APP_URL:-http://localhost:3000}
+    volumes:
+      - rustfs-data:/data
+    command: /data
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  rustfs-data:
+  mongo-data:

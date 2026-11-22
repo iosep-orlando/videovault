@@ -1,0 +1,65 @@
+# CI: lint + tipos y tests con cobertura.
+#
+# El runner es de tipo shell (tag `cloudrun`): los comandos se ejecutan
+# directamente en la máquina del runner, que debe tener Node.js 22 o superior.
+# Por eso no hay `image` ni `services`. Los tests no necesitan MongoDB ni
+# RustFS: prueban la lógica, y S3 se sustituye por un cliente de mentira.
+
+stages:
+  - lint
+  - test
+
+# Un solo pipeline por cambio: en una merge request corre el pipeline de la MR
+# y no además el de la rama.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+default:
+  tags:
+    - cloudrun
+
+variables:
+  # Las cachés de GitLab solo pueden guardar rutas dentro del proyecto.
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+.node:
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - .npm/
+  before_script:
+    - node --version
+    - npm --version
+    - npm ci --prefer-offline --no-audit --no-fund
+
+lint:
+  extends: .node
+  stage: lint
+  script:
+    - npm run lint
+    - npm run typecheck
+
+test:
+  extends: .node
+  stage: test
+  script:
+    - npm run test:coverage -- --reporter=default --reporter=junit --outputFile.junit=junit.xml
+  # Porcentaje de líneas cubiertas, leído del resumen que imprime Vitest.
+  coverage: '/Lines\s*:\s*(\d+(?:\.\d+)?)%/'
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - coverage/
+    reports:
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml

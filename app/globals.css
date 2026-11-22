@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Paleta "mesa de luz": un fondo claro y luminoso, como el de una mesa para
+   mirar diapositivas, y los vídeos enmarcados en monturas oscuras. */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-bricolage);
+  --color-lightbox: #eef2f6; /* fondo */
+  --color-mount: #1c2333; /* montura de las diapositivas y texto principal */
+  --color-mount-soft: #2a3346;
+  --color-muted: #5b6578;
+  --color-accent: #6d28d9; /* violeta: acciones */
+  --color-accent-strong: #5b21b6;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foco visible en todo lo que se puede usar con teclado. En la capa base,
+   para que un componente con su propio indicador de foco (los campos de
+   texto, con su anillo violeta) pueda sustituirlo sin que se vean los dos. */
+@layer base {
+  :where(a, button, input, textarea, select, summary):focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
